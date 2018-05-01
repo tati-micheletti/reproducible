@@ -313,6 +313,108 @@ setMethod(
   })
 
 
+
+
+#' zip the Cache
+#'
+#' When moving a cache between machines or users, this may be helpful.
+#'
+#' @inheritParams clearCache
+#'
+#' @export
+#' @importFrom archivist splitTagsLocal
+#' @importFrom data.table data.table set setkeyv
+#' @rdname viewCache
+#' @seealso \code{\link{mergeCache}}, \code{\link[archivist]{splitTagsLocal}}.
+#'
+setGeneric("zipCache", function(x, userTags = character(), after, before, ...) {
+  standardGeneric("zipCache")
+})
+
+#' @export
+#' @rdname viewCache
+setMethod(
+  "zipCache",
+  definition = function(x, ...) {
+
+    browser()
+    if (missing(x)) {
+      # message("x not specified; using ", getOption("spades.cachePath"))
+      #x <- getOption("spades.cachePath")
+      x <- .checkCacheRepo(list(NULL), create = TRUE)
+    }
+    tmpZipCache <- file.path(tempdir(), "zipCache")
+    suppressMessages(.checkCacheRepo(
+      list(object = tmpZipCache), create = TRUE))
+
+    mergeCache(cacheTo = tmpZipCache, cacheFrom = x)
+    suppressMessages(cacheFromList <- showCache(x, ...))
+    #suppressMessages(cacheToList <- showCache(cacheTo))
+
+    artifacts <- unique(cacheFromList$artifact)
+    objectList <- lapply(artifacts, loadFromLocalRepo,
+                         repoDir = cacheFrom, value = TRUE)
+    mapply(outputToSave = objectList, artifact = artifacts,
+           function(outputToSave, artifact) {
+             written <- FALSE
+             if (is(outputToSave, "Raster")) {
+               outputToSave <- .prepareFileBackedRaster(outputToSave, repoDir = cacheTo)
+             }
+             userTags <- cacheFromList[artifact][!tagKey %in% c("format", "name", "class", "date", "cacheId"),
+                                                 list(tagKey, tagValue)]
+             userTags <- c(paste0(userTags$tagKey, ":", userTags$tagValue))
+             while (!written) {
+               saved <- suppressWarnings(try(
+                 saveToLocalRepo(outputToSave, repoDir = cacheTo,
+                                 artifactName = "Cache",
+                                 archiveData = FALSE, archiveSessionInfo = FALSE,
+                                 archiveMiniature = FALSE, rememberName = FALSE,
+                                 silent = TRUE, userTags = userTags),
+                 silent = TRUE
+               ))
+               # This is for simultaneous write conflicts. SQLite on Windows can't handle them.
+               written <- if (is(saved, "try-error")) {
+                 Sys.sleep(0.05)
+                 FALSE
+               } else {
+                 TRUE
+               }
+             }
+           }
+    )
+    .messageCacheSize(cacheTo)
+
+    if (missing(x)) {
+      message("x not specified; using ", getOption("spades.cachePath"))
+      x <- getOption("spades.cachePath")
+    }
+    if (missing(after)) after <- "1970-01-01"
+    if (missing(before)) before <- Sys.time() + 1e5
+    if (is(x, "simList")) x <- x@paths$cachePath
+
+    objsDT <- showLocalRepo(x) %>% data.table()
+    setkeyv(objsDT, "md5hash")
+    if (NROW(objsDT) > 0) {
+      objsDT <- data.table(splitTagsLocal(x), key = "artifact")
+      objsDT3 <- objsDT[tagKey == "accessed"][(tagValue <= before) &
+                                                (tagValue >= after)][!duplicated(artifact)]
+      objsDT <- objsDT[artifact %in% objsDT3$artifact]
+      if (length(userTags) > 0) {
+        for (ut in userTags) {
+          objsDT2 <- objsDT[
+            grepl(tagValue, pattern = ut)   |
+              grepl(tagKey, pattern = ut) |
+              grepl(artifact, pattern = ut)]
+          setkeyv(objsDT2, "artifact")
+          shortDT <- unique(objsDT2, by = "artifact")[, artifact]
+          objsDT <- if (NROW(shortDT)) objsDT[shortDT] else objsDT[0] # merge each userTags
+        }
+      }
+    }
+    .messageCacheSize(x)
+    objsDT
+  })
+
 #' @keywords internal
 .messageCacheSize <- function(x, artifacts = NULL) {
   
