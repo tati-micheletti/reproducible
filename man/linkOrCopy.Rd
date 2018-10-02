@@ -9,13 +9,11 @@ linkOrCopy(from, to, symlink = TRUE)
 \arguments{
 \item{from}{character vectors, containing file names or paths.
     For \code{file.copy} and \code{file.symlink}
-    and \code{Sys.junction}
-    \code{to} can alternatively be the path to a single existing directory.}
+#ifdef windows not active    \code{to} can alternatively be the path to a single existing directory.}
 
 \item{to}{character vectors, containing file names or paths.
     For \code{file.copy} and \code{file.symlink}
-    and \code{Sys.junction}
-    \code{to} can alternatively be the path to a single existing directory.}
+#ifdef windows not active    \code{to} can alternatively be the path to a single existing directory.}
 
 \item{symlink}{Logical indicating whether to use symlink (instead of hardlink).
 Default \code{FALSE}.}
