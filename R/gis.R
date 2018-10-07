@@ -150,6 +150,7 @@ fastMask <- function(x, y) {
                "-ot ",
                dType, " ",
                "-crop_to_cutline ",
+               "-of GTiff ",
                "-cutline ",  "\"", tempSrcShape,"\"", " ",
                " -overwrite ",
                "-tr ", paste(tr, collapse = " "), " ",
