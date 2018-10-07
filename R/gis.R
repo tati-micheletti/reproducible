@@ -127,7 +127,9 @@ fastMask <- function(x, y) {
       # the raster could be in memory if it wasn't reprojected
       if (inMemory(x)){
         dType <- assessDataType(raster(x))
-        writeRaster(x, filename = tempSrcRaster, datatype = dType, overwrite = TRUE)
+        writeRaster(x, filename = tempSrcRaster,
+                    datatype = dType, overwrite = TRUE,
+                    format = "GTiff")
         rm(x)
         gc()
       } else {
