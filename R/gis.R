@@ -117,7 +117,6 @@ fastMask <- function(x, y) {
     if (!raster::canProcessInMemory(x, n = 4)){
      #call gdal
       message("fastMask is using gdalwarp")
-      browser()
 
       #rasters need to go to same directory that can be unlinked at end without losing other temp files
       tmpRasPath <- checkPath(file.path(raster::tmpDir(), "bigRasters"), create = TRUE)
@@ -133,6 +132,7 @@ fastMask <- function(x, y) {
         rm(x)
         gc()
       } else {
+        browser()
         tempSrcRaster <- x@file@name #Keep original raster.
       }
 
