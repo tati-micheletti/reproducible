@@ -468,7 +468,7 @@ projectInputs.Raster <- function(x, targetCRS = NULL, rasterToMatch = NULL, ...)
        # the raster is in memory, but large enough to trigger this function: write it to disk
         if (inMemory(x)){
           dType <- assessDataType(x)
-          writeRaster(x, filename = tempSrcRaster, datatype = dType, overwrite = TRUE)
+          writeRaster(x, filename = tempSrcRaster, datatype = dType, , format = "GTiff",  overwrite = TRUE)
           rm(x)
           gc()
         } else {
@@ -787,7 +787,7 @@ writeOutputs.Raster <- function(x, filename2 = NULL, overwrite = FALSE, ...) {
               "\n consider changing to ", datatype2)
 
 
-    xTmp <- do.call(writeRaster, args = c(x = x, filename = filename2, overwrite = overwrite, dots))
+    xTmp <- do.call(writeRaster, args = c(x = x, filename = filename2, overwrite = overwrite, format = "GTiff", dots))
     #Before changing to do.call, dots were not being added.
     # This is a bug in writeRaster was spotted with crs of xTmp became
     # +proj=lcc +lat_1=49 +lat_2=77 +lat_0=0 +lon_0=-95 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
