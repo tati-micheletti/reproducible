@@ -599,11 +599,6 @@ extractFromArchive <- function(archive, destinationPath = dirname(archive),
     c(argList)
   }
   extractedFiles <- do.call(fun, c(args, argList))
-<<<<<<< HEAD
-  if (!all(file.path(args$exdir, argList[[1]]) %in% extractedFiles)){
-    message(paste0("File unzipping do not appear to have worked properly.",
-                   " Trying a system call of unzip..."))
-=======
   if (!all(file.path(args$exdir, basename(argList[[1]])) %in% extractedFiles)) {
     message(
       paste0(
@@ -611,7 +606,6 @@ extractFromArchive <- function(archive, destinationPath = dirname(archive),
         " Trying a system call of unzip..."
       )
     )
->>>>>>> addb5c4c98b2c8a553dd520792ac2035e1f70b4a
     wd <- getwd()
     tempDir <- file.path(args$exdir, "extractedFiles")
     dir.create(tempDir, showWarnings = FALSE)
@@ -620,17 +614,11 @@ extractFromArchive <- function(archive, destinationPath = dirname(archive),
             args = args[1],
             wait = TRUE,
             stdout = NULL)
-<<<<<<< HEAD
-    extractedFiles <- list.files(path = getwd(), # list of full paths of all extracted files!
-                                 recursive = TRUE,
-                                 include.dirs = TRUE)
-=======
     extractedFiles <-
       list.files(path = getwd(),
                  # list of full paths of all extracted files!
                  recursive = TRUE,
                  include.dirs = TRUE)
->>>>>>> addb5c4c98b2c8a553dd520792ac2035e1f70b4a
     invisible(lapply(
       X = extractedFiles,
       FUN = function(fileToMove) {
@@ -643,10 +631,6 @@ extractFromArchive <- function(archive, destinationPath = dirname(archive),
     setwd(wd)
     rm(wd)
   }
-<<<<<<< HEAD
-
-=======
->>>>>>> addb5c4c98b2c8a553dd520792ac2035e1f70b4a
   if (!isUnzip) {
     extractedFiles <- files
   }
