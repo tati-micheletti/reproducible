@@ -314,7 +314,7 @@ cropInputs.spatialObjects <- function(x, studyArea = NULL, rasterToMatch = NULL,
         browser()
         dots <- list(...)
         dots[.formalsNotInCurrentDots("crop", ...)] <- NULL
-        x <- do.call(raster::crop, args = append(list(x = x, y = cropExtent), dots))
+        x <- do.call(raster::crop, args = append(list(x = x, y = cropExtent, format = "GTiff"), dots))
         if (is.null(x)) {
           message("    polygons do not intersect.")
         }
@@ -469,7 +469,7 @@ projectInputs.Raster <- function(x, targetCRS = NULL, rasterToMatch = NULL, ...)
        # the raster is in memory, but large enough to trigger this function: write it to disk
         if (inMemory(x)){
           dType <- assessDataType(x)
-          writeRaster(x, filename = tempSrcRaster, datatype = dType, , format = "GTiff",  overwrite = TRUE)
+          writeRaster(x, filename = tempSrcRaster, datatype = dType, format = "GTiff",  overwrite = TRUE)
           rm(x)
           gc()
         } else {
