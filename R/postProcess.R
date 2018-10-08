@@ -178,7 +178,6 @@ postProcess.spatialObjects <- function(x, filename1 = NULL, filename2 = TRUE,
       extRTM <- NULL
       crsRTM <- NULL
     }
-browser()
     x <- Cache(cropInputs, x = x, studyArea = studyArea,
                extentToMatch = extRTM,
                extentCRS = crsRTM,
@@ -311,7 +310,6 @@ cropInputs.spatialObjects <- function(x, studyArea = NULL, rasterToMatch = NULL,
       # crop it
       if (!identical(cropExtent, extent(x))) {
         message("    cropping ...")
-        browser()
         dots <- list(...)
         dots[.formalsNotInCurrentDots("crop", ...)] <- NULL
         x <- do.call(raster::crop, args = append(list(x = x, y = cropExtent, format = "GTiff"), dots))

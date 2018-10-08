@@ -132,7 +132,6 @@ fastMask <- function(x, y) {
         rm(x)
         gc()
       } else {
-        browser()
         tempSrcRaster <- x@file@name #Keep original raster.
       }
 
