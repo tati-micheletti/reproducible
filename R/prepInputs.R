@@ -311,6 +311,7 @@ prepInputs <- function(targetFile = NULL, url = NULL, archive = NULL, alsoExtrac
   ## postProcess -- skip if no studyArea or rasterToMatch -- Caching could be slow otherwise
   if (!(all(is.null(out$dots$studyArea), is.null(out$dots$rasterToMatch)))) {
     message("Running postProcess")
+    browser()
     x <- Cache(do.call, postProcess, append(list(x = x, filename1 = out$targetFilePath,
                                                  destinationPath = out$destinationPath), out$dots),
                useCache = useCache)
