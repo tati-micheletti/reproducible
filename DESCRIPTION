@@ -11,7 +11,7 @@ Description: Collection of high-level, robust, machine- and OS-independent tools
 URL: 
     http://reproducible.predictiveecology.org,
     https://github.com/PredictiveEcology/reproducible
-Date: 2018-10-01
+Date: 2018-10-09
 Version: 0.2.4
 Authors@R: c(
     person("Eliot J B", "McIntire", email = "eliot.mcintire@canada.ca",
@@ -60,8 +60,6 @@ Suggests:
     knitr,
     rmarkdown,
     TimeWarp
-Remotes:
-    PredictiveEcology/quickPlot@development
 Encoding: UTF-8
 Language: en-CA
 LinkingTo: Rcpp
