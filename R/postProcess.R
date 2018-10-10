@@ -854,7 +854,11 @@ assessDataType <- function(ras) {
 #' @rdname assessDataType
 assessDataType.Raster <- function(ras) {
   ## using ras@data@... is faster, but won't work for @values in large rasters
-  rasVals <- getValues(ras)
+  if (ncell(ras) > 100000) {
+    rasVals <- raster::sampleRandom(x = ras, size = 100000) #assumes 100,000 pixels in raster
+  } else {
+    rasVals <- raster::getValues(ras)
+  }
   minVal <- ras@data@min
   maxVal <- ras@data@max
   signVal <- minVal < 0
