@@ -122,7 +122,7 @@ fastMask <- function(x, y) {
       tmpRasPath <- checkPath(file.path(raster::tmpDir(), "bigRasters"), create = TRUE)
       tempSrcRaster <- file.path(tmpRasPath, "bigRasInput.tif")
       tempDstRaster <- file.path(tmpRasPath, paste0(x@data@names,"_mask", ".tif"))
-
+browser()
       # the raster could be in memory if it wasn't reprojected
       if (inMemory(x)){
         dType <- assessDataType(raster(x))
