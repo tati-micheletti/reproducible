@@ -853,6 +853,7 @@ assessDataType <- function(ras) {
 #' @importFrom raster getValues ncell
 #' @rdname assessDataType
 assessDataType.Raster <- function(ras) {
+  browser()
   ## using ras@data@... is faster, but won't work for @values in large rasters
   rasVals <- getValues(ras)
   minVal <- ras@data@min
