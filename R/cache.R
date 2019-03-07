@@ -251,6 +251,13 @@ if (getRversion() >= "3.1.0") {
 #'        If a number larger than \code{1}, then it will report the N most similar archived
 #'        objects.
 #'
+#' @param expectSubset Character. This should be the argument to check if the evaluated
+#'        passed arguments are somehow a subset of a cached object (i.e. the argument that is the
+#'        subset and that is NOT being omitted by 'omitArgs').
+#'        If this argument is passed, Cache will compare it to arguments of the closest cached object. If
+#'        the digested arguments are within the cached arguments, the function passes the hash
+#'        of the most similar cache for loading.
+#'
 #' @inheritParams digest::digest
 #'
 #' @param digestPathContent Being deprecated. Use \code{quick}.
@@ -302,7 +309,9 @@ setGeneric(
            quick = getOption("reproducible.quick", FALSE),
            verbose = getOption("reproducible.verbose", 0), cacheId = NULL,
            useCache = getOption("reproducible.useCache", TRUE),
-           showSimilar = getOption("reproducible.showSimilar", FALSE)) {
+           showSimilar = getOption("reproducible.showSimilar", FALSE),
+           expectSubset = NULL,
+           argsToPreserve = NULL) {
     archivist::cache(cacheRepo, FUN, ..., notOlderThan, algo, userTags = userTags)
   })
 
@@ -317,7 +326,7 @@ setMethod(
                         digestPathContent, omitArgs, classOptions,
                         debugCache, sideEffect, makeCopy, quick, verbose,
                         cacheId, useCache,
-                        showSimilar) {
+                        showSimilar, expectSubset, argsToPreserve) {
 
     if (!is.null(list(...)$objects)) {
       message("Please use .objects (if trying to pass to Cache) instead of objects which is being deprecated")
@@ -328,6 +337,9 @@ setMethod(
     # returns "modifiedDots", "originalDots", "FUN", "funName", which will
     #  have modifications under many circumstances, e.g., do.call, specific methods etc.
     fnDetails <- .fnCleanup(FUN = FUN, callingFun = "Cache", ...)
+
+    browser()
+    # Need to check where to add the attributes of the "argsToPreserve"
 
     FUN <- fnDetails$FUN
     modifiedDots <- fnDetails$modifiedDots
@@ -525,21 +537,6 @@ setMethod(
           return(list(hash = preDigest, content = list(...)))
       }
 
-      if (!is.null(cacheId)) {
-        outputHashManual <- cacheId
-        if (identical(outputHashManual, outputHash)) {
-          message("cacheId is same as calculated hash")
-        } else {
-          message("cacheId is not same as calculated hash. Manually searching for cacheId:", cacheId)
-        }
-        outputHash <- outputHashManual
-      }
-
-      if (length(debugCache)) {
-        if (!is.na(pmatch(debugCache, "iterative")))
-          browser()
-      }
-
       # compare outputHash to existing Cache record
       tries <- 1
       while (tries <= length(cacheRepos)) {
@@ -558,6 +555,76 @@ setMethod(
       )
 
       outputHashNew <- outputHash # Keep a copy of this because it may be replaced next, but we need to know old one
+
+      # here cache will check if the supplied function/arguments are a subset of
+      # a cached object
+      if (length(expectSubset) > 0){
+        if (!is.null(cacheId)) {
+          stop(paste0("cacheId is not NULL and expectSubset is TRUE. ",
+                      "Only provide 'expectSubset == TRUE' if you don't provide ",
+                      "cacheId."))
+        } else {
+          browser()
+          # if (length(expectSubset) > 1){
+          #   message(paste0("For now, expectSubset accepts only one argument to be checked.",
+          #                  " It will use the first one")) # TODO: lapply through arguments
+          #   expectSubset <- expectSubset[1]
+          # }
+          mess <- suppressMessages(capture.output(type = "output",
+                                 similar <- .findSimilar(localTags, showSimilar = 1, scalls,
+                                                         preDigestUnlistTrunc, userTags)))
+          if (!is.null(similar)){
+            whichDiffer <- similar$similar[similar$similar$differs == TRUE, fun]
+            isInRepoSub <- localTags[localTags$tag == paste0("cacheId:", similar$cachedId), , drop = FALSE]
+            existingCache <- suppressMessages(.getFromRepo(FUN, cacheId = similar$cachedId, isInRepo = isInRepoSub,
+                                                           cacheRepo = cacheRepo,
+                                                           fnDetails = fnDetails,
+                                                           modifiedDots = modifiedDots, debugCache = debugCache,
+                                                           verbose = verbose, sideEffect = sideEffect,
+                                                           quick = quick, algo = algo,
+                                                           preDigest = preDigest,
+                                                           ...))
+            if (identical(whichDiffer, expectSubset)){
+
+
+              browser()
+              argsInExistRepo <- "Check if any of the lists have all the args passed here"
+              # if (!is.null()) # Need the name of the passed Subset
+
+
+              # return(existingCache)
+              # AS OF NOW, WE CAN'T RETRIEVE INFORMATION ON WHAT WAS THE ORIGINAL VALUE OF THE ARGUMENT THAT CHANGES...
+              # NEED TO SOMEHOW SAVE IT IN THE CACHE CALL TO BE ABLE TO COMPARE...
+              # tail(existingCache)
+
+              # 2. Compare them setdiff(subset, fromOriginalObject$full)
+              # 3. if length(setdiff)==0, they are inside, get the cacheId
+              # 4. pass the cacheId to the call with a message
+            } else {
+              message(paste0("There are more arguments that differ than the ones being passed to expectSubset.",
+                             "\n The current call will be run and cached"))
+            }
+          } else {
+            message(paste0("Cache didn't find a close cached version of the function call.",
+                    "\n The current call will be run and cached"))
+          }
+        }
+      }
+
+      if (!is.null(cacheId)) {
+        outputHashManual <- cacheId
+        if (identical(outputHashManual, outputHash)) {
+          message("cacheId is same as calculated hash")
+        } else {
+          message("cacheId is not same as calculated hash. Manually searching for cacheId:", cacheId)
+        }
+        outputHash <- outputHashManual
+      }
+
+      if (length(debugCache)) {
+        if (!is.na(pmatch(debugCache, "iterative")))
+          browser()
+      }
 
       # First, if this is not matched by outputHash, test that it is matched by
       #   userTags and in devMode
@@ -1254,6 +1321,8 @@ warnonce <- function(id, ...) {
 #' @importFrom data.table setDT setkeyv
 #' @keywords internal
 .findSimilar <- function(localTags, showSimilar, scalls, preDigestUnlistTrunc, userTags) {
+  cacheIdOfSimilar <- NULL
+  similar2 <- NULL
   setDT(localTags)
   if (identical("devMode", getOption("reproducible.useCache")))
     showSimilar <- 1
@@ -1304,6 +1373,8 @@ warnonce <- function(id, ...) {
     if (!identical("devMode", getOption("reproducible.useCache")))
       message("There is no similar item in the cacheRepo")
   }
+  return(invisible(list(cachedId = cacheIdOfSimilar,
+                        similar = similar2)))
 }
 
 getLocalTags <- function(cacheRepo) {
