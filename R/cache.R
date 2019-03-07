@@ -337,10 +337,6 @@ setMethod(
     # returns "modifiedDots", "originalDots", "FUN", "funName", which will
     #  have modifications under many circumstances, e.g., do.call, specific methods etc.
     fnDetails <- .fnCleanup(FUN = FUN, callingFun = "Cache", ...)
-
-    browser()
-    # Need to check where to add the attributes of the "argsToPreserve"
-
     FUN <- fnDetails$FUN
     modifiedDots <- fnDetails$modifiedDots
     originalDots <- fnDetails$originalDots
@@ -564,16 +560,10 @@ setMethod(
                       "Only provide 'expectSubset == TRUE' if you don't provide ",
                       "cacheId."))
         } else {
-          browser()
-          # if (length(expectSubset) > 1){
-          #   message(paste0("For now, expectSubset accepts only one argument to be checked.",
-          #                  " It will use the first one")) # TODO: lapply through arguments
-          #   expectSubset <- expectSubset[1]
-          # }
           mess <- suppressMessages(capture.output(type = "output",
                                  similar <- .findSimilar(localTags, showSimilar = 1, scalls,
                                                          preDigestUnlistTrunc, userTags)))
-          if (!is.null(similar)){
+          if (!is.null(similar)){ # similar might be null
             whichDiffer <- similar$similar[similar$similar$differs == TRUE, fun]
             isInRepoSub <- localTags[localTags$tag == paste0("cacheId:", similar$cachedId), , drop = FALSE]
             existingCache <- suppressMessages(.getFromRepo(FUN, cacheId = similar$cachedId, isInRepo = isInRepoSub,
@@ -584,22 +574,36 @@ setMethod(
                                                            quick = quick, algo = algo,
                                                            preDigest = preDigest,
                                                            ...))
-            if (identical(whichDiffer, expectSubset)){
-
-
-              browser()
-              argsInExistRepo <- "Check if any of the lists have all the args passed here"
-              # if (!is.null()) # Need the name of the passed Subset
-
-
-              # return(existingCache)
-              # AS OF NOW, WE CAN'T RETRIEVE INFORMATION ON WHAT WAS THE ORIGINAL VALUE OF THE ARGUMENT THAT CHANGES...
-              # NEED TO SOMEHOW SAVE IT IN THE CACHE CALL TO BE ABLE TO COMPARE...
-              # tail(existingCache)
-
-              # 2. Compare them setdiff(subset, fromOriginalObject$full)
-              # 3. if length(setdiff)==0, they are inside, get the cacheId
-              # 4. pass the cacheId to the call with a message
+            if (all(whichDiffer %in% expectSubset)){ # the expectSubset might differ from which is different in the similar
+              superset <- attributes(existingCache)$argsToPreserve
+              if (is.null(superset)){ # superset can be null in the similar
+                message("The most similar cached object doesn't have arguments preserved to compare to the expected subset")
+              } else {# superset is not null but might not match the expectSubset
+                if (!all(expectSubset %in% names(superset))){
+                  message("Not all of the expect subset passed match a preserved argument in the existing cached object.
+                          \n The current call will be run and cached")
+                } else {
+                  message("comparing the 'expectSubset' \n", magenta(expectSubset),
+                          "\nto the most similar cached object that has arguments preserved \n",
+                          magenta(names(superset)))
+                  isMATCH <- all(unlist(lapply(X = expectSubset, FUN = function(sbst){
+                    subsetVals <- originalDots[[sbst]]
+                    supersetVals <- superset[[sbst]]
+                    cmp <- setdiff(subsetVals, supersetVals)
+                    if (NROW(cmp) == 0) return(TRUE) else return(FALSE)
+                  })
+                  )
+                  )
+                  if (isMATCH){
+                    message(paste0("All expected subsets are found in the cached object \n returning cached object with ",
+                            attributes(existingCache)$tags))
+                    return(existingCache)
+                  } else {
+                    message(paste0("All expected subsets are found in the cached",
+                                   "\n The current call will be run and cached"))
+                  }
+                }
+              }
             } else {
               message(paste0("There are more arguments that differ than the ones being passed to expectSubset.",
                              "\n The current call will be run and cached"))
@@ -765,6 +769,14 @@ setMethod(
       .setSubAttrInList(output, ".Cache", "newCache", TRUE)
       setattr(output, "tags", paste0("cacheId:", outputHash))
       setattr(output, "call", "")
+
+      if (!is.null(argsToPreserve)){
+        argsList <- lapply(X = argsToPreserve, FUN = function(arg){
+          originalDots[[arg]]
+        })
+        names(argsList) <- argsToPreserve
+        setattr(output, "argsToPreserve", argsList)
+        }
       # attr(output, "tags") <- paste0("cacheId:", outputHash)
       # attr(output, ".Cache")$newCache <- TRUE
       # attr(output, "call") <- ""
@@ -806,7 +818,7 @@ setMethod(
           outputToSave <- .prepareFileBackedRaster(outputToSave, repoDir = cacheRepo,
                                                    overwrite = FALSE)
         }
-
+browser()
         setattr(outputToSave, "tags", attr(output, "tags"))
         .setSubAttrInList(outputToSave, ".Cache", "newCache", attr(output, ".Cache")$newCache)
         setattr(outputToSave, "call", attr(output, "call"))

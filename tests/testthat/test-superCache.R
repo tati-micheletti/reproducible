@@ -1,4 +1,4 @@
-setwd("C:/Users/tmichele/GitHub/reproducible")
+setwd("C:/Users/Tati/GitHub/reproducible")
 devtools::load_all()
 library("LandR")
 
@@ -17,14 +17,16 @@ library("LandR")
   a <- data.frame(A = A, B = B, C = C)
   b <- a[a$C %in% c("G1", "G2"), ]
 
-  modCache <- superCache(FUN = LandR::statsModel, form = "A ~ B + (1|C)", .specialData = a,
+  modCache <- Cache(FUN = LandR::statsModel, form = "A ~ B + (1|C)", .specialData = a,
                          uniqueEcoregionGroups = C, argsToPreserve = "uniqueEcoregionGroups",
                          cacheRepo = tmpCache, omitArgs = ".specialData")
+  # Expect to have an attribute named X with Values Y
 
   C <- c("G1", "G1", "G2", "G2")
 
   modCacheSub <- Cache(FUN = LandR::statsModel, formula = "A ~ B + (1|C)", .specialData = b, uniqueEcoregionGroups = C,
-                       expectSubset = C, cacheRepo = tmpCache, omitArgs = c(".specialData", "expectSubset"))
+                       expectSubset = "uniqueEcoregionGroups", cacheRepo = tmpCache,
+                       omitArgs = c(".specialData", "expectSubset"))
 
   # FROM HERE ON: implement in the showSimilar:
   # 0. Only if cacheId is NOT supplied
