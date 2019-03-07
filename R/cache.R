@@ -628,9 +628,9 @@ setMethod(
 
       # First, if this is not matched by outputHash, test that it is matched by
       #   userTags and in devMode
-      needFindByTags <- identical("devMode", getOption("reproducible.useCache")) &&
+      needFindByTags <- identical("devMode", useCache) &&
         NROW(isInRepo) == 0
-      if (identical("devMode", getOption("reproducible.useCache")) && NROW(isInRepo) == 0) {
+      if (identical("devMode", useCache) && NROW(isInRepo) == 0) {
         isInRepoAlt <- localTags[localTags$tag %in% userTags, , drop = FALSE]
         data.table::setDT(isInRepoAlt)
         isInRepoAlt <- isInRepoAlt[, iden := identical(sum(tag %in% userTags), length(userTags)),
@@ -644,7 +644,8 @@ setMethod(
             mess <- capture.output(type = "output",
                                    similars <- .findSimilar(newLocalTags, scalls = scalls,
                                                             preDigestUnlistTrunc = preDigestUnlistTrunc,
-                                                            userTags = userTags))
+                                                            userTags = userTags,
+                                                            useCache = useCache))
             similarsHaveNA <- sum(is.na(similars$differs))
             #similarsAreDifferent <- sum(similars$differs == TRUE, na.rm = TRUE)
             #likelyNotSame <- sum(similarsHaveNA, similarsAreDifferent)/NROW(similars)
@@ -674,7 +675,7 @@ setMethod(
 
       if (identical("overwrite", useCache)  && NROW(isInRepo) > 0 || needFindByTags) {
         suppressMessages(clearCache(x = cacheRepo, userTags = outputHash, ask = FALSE))
-        if (identical("devMode", getOption("reproducible.useCache"))) {
+        if (identical("devMode", useCache)) {
           isInRepo <- isInRepo[!isInRepo$tag %in% userTags, , drop = FALSE]
           outputHash <- outputHashNew
           message("Overwriting Cache entry with userTags: '",paste(userTags, collapse = ", ") ,"'")
@@ -704,7 +705,9 @@ setMethod(
       } else {
         # find similar -- in progress
         if (!is.null(showSimilar)) { # TODO: Needs testing
-          .findSimilar(localTags, showSimilar, scalls, preDigestUnlistTrunc, userTags)
+          if (!isFALSE(showSimilar))
+            .findSimilar(localTags, showSimilar, scalls, preDigestUnlistTrunc,
+                         userTags, useCache = useCache)
         }
       }
 
@@ -1320,11 +1323,10 @@ warnonce <- function(id, ...) {
 
 #' @importFrom data.table setDT setkeyv
 #' @keywords internal
-.findSimilar <- function(localTags, showSimilar, scalls, preDigestUnlistTrunc, userTags) {
-  cacheIdOfSimilar <- NULL
-  similar2 <- NULL
+.findSimilar <- function(localTags, showSimilar, scalls, preDigestUnlistTrunc, userTags,
+                         useCache = getOption("reproducible.useCache", TRUE)) {
   setDT(localTags)
-  if (identical("devMode", getOption("reproducible.useCache")))
+  if (identical("devMode", useCache))
     showSimilar <- 1
   userTags2 <- .getOtherFnNamesAndTags(scalls = scalls)
   userTags2 <- c(userTags2, paste("preDigest", names(preDigestUnlistTrunc), preDigestUnlistTrunc, sep = ":"))
@@ -1370,7 +1372,7 @@ warnonce <- function(id, ...) {
     print(paste0("artifact with cacheId ", cacheIdOfSimilar))
     print(similar2[,c("fun", "differs")])
   } else {
-    if (!identical("devMode", getOption("reproducible.useCache")))
+    if (!identical("devMode", useCache))
       message("There is no similar item in the cacheRepo")
   }
   return(invisible(list(cachedId = cacheIdOfSimilar,
