@@ -574,18 +574,34 @@ setMethod(
                                                            quick = quick, algo = algo,
                                                            preDigest = preDigest,
                                                            ...))
+            while (is.null(attributes(existingCache)$argsToPreserve)){
+              tgs <- attributes(existingCache)$tags
+              mess <- suppressMessages(capture.output(type = "output",
+                                                      similar <- .findSimilar(localTags, showSimilar = 1, scalls,
+                                                                              preDigestUnlistTrunc, userTags = tgs)))
+              existingCache <- suppressMessages(.getFromRepo(FUN, cacheId = similar$cachedId, isInRepo = isInRepoSub,
+                                                             cacheRepo = cacheRepo,
+                                                             fnDetails = fnDetails,
+                                                             modifiedDots = modifiedDots, debugCache = debugCache,
+                                                             verbose = verbose, sideEffect = sideEffect,
+                                                             quick = quick, algo = algo,
+                                                             preDigest = preDigest,
+                                                             ...))
+            }
+
             if (all(whichDiffer %in% expectSubset)){ # the expectSubset might differ from which is different in the similar
               superset <- attributes(existingCache)$argsToPreserve
               if (is.null(superset)){ # superset can be null in the similar
                 message("The most similar cached object doesn't have arguments preserved to compare to the expected subset")
               } else {# superset is not null but might not match the expectSubset
                 if (!all(expectSubset %in% names(superset))){
+                  browser()
                   message("Not all of the expect subset passed match a preserved argument in the existing cached object.
                           \n The current call will be run and cached")
                 } else {
-                  message("comparing the 'expectSubset' \n", magenta(expectSubset),
+                  message("comparing the 'expectSubset' \n", paste(magenta(expectSubset), collapse = "\n"),
                           "\nto the most similar cached object that has arguments preserved \n",
-                          magenta(names(superset)))
+                          paste(magenta(names(superset)), collapse = "\n"))
                   isMATCH <- all(unlist(lapply(X = expectSubset, FUN = function(sbst){
                     subsetVals <- originalDots[[sbst]]
                     supersetVals <- superset[[sbst]]
@@ -599,16 +615,18 @@ setMethod(
                             attributes(existingCache)$tags))
                     return(existingCache)
                   } else {
-                    message(paste0("All expected subsets are found in the cached",
+                    message(paste0("The arguments passed are not a subset of the most similar cached object",
                                    "\n The current call will be run and cached"))
                   }
                 }
               }
             } else {
+              browser()
               message(paste0("There are more arguments that differ than the ones being passed to expectSubset.",
                              "\n The current call will be run and cached"))
             }
           } else {
+            browser()
             message(paste0("Cache didn't find a close cached version of the function call.",
                     "\n The current call will be run and cached"))
           }

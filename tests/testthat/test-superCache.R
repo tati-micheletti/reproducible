@@ -17,34 +17,85 @@ library("LandR")
   a <- data.frame(A = A, B = B, C = C)
   b <- a[a$C %in% c("G1", "G2"), ]
 
+  # Case with only one argument
   modCache <- Cache(FUN = LandR::statsModel, form = "A ~ B + (1|C)", .specialData = a,
                          uniqueEcoregionGroups = C, argsToPreserve = "uniqueEcoregionGroups",
                          cacheRepo = tmpCache, omitArgs = ".specialData")
-  # Expect to have an attribute named X with Values Y
+  testthat::expect_true(!is.null(attributes(modCache)$argsToPreserve))
+  testthat::expect_true(names(attributes(modCache)$argsToPreserve) == "uniqueEcoregionGroups")
+  testthat::expect_identical(attributes(modCache)$argsToPreserve[["uniqueEcoregionGroups"]], C)
 
-  C <- c("G1", "G1", "G2", "G2")
+  D <- c("G1", "G1", "G2", "G2")
 
-  modCacheSub <- Cache(FUN = LandR::statsModel, formula = "A ~ B + (1|C)", .specialData = b, uniqueEcoregionGroups = C,
-                       expectSubset = "uniqueEcoregionGroups", cacheRepo = tmpCache,
-                       omitArgs = c(".specialData", "expectSubset"))
+  testthat::expect_message(modCacheSub <- Cache(FUN = LandR::statsModel, formula = "A ~ B + (1|C)", .specialData = b,
+                                                uniqueEcoregionGroups = D,
+                                                expectSubset = "uniqueEcoregionGroups", cacheRepo = tmpCache,
+                                                omitArgs = c(".specialData", "expectSubset")),
+                           regexp = "All expected subsets are found in the cached object")
 
-  # FROM HERE ON: implement in the showSimilar:
-  # 0. Only if cacheId is NOT supplied
-  # 1. test if the arguments that differ can be compared
-  # 2. Compare them setdiff(subset, fromOriginalObject$full)
-  # 3. if length(setdiff)==0, they are inside, get the cacheId
-  # 4. pass the cacheId to the call with a message
+  testthat::expect_true(!is.null(attributes(modCacheSub)$argsToPreserve))
+  testthat::expect_true(names(attributes(modCacheSub)$argsToPreserve)=="uniqueEcoregionGroups")
+  testthat::expect_identical(attr(modCacheSub, "tags"), attr(modCacheSub, "tags"))
+
+  # Case with two arguments, but one is being ignored as it doesn't belong to the function
+  modCache2 <- Cache(FUN = LandR::statsModel, form = "A ~ B + (1|C)", .specialData = a,
+                    uniqueEcoregionGroups = C, secondArg = c("A1", "A2", "A3"),
+                    argsToPreserve = c("uniqueEcoregionGroups", "secondArg"),
+                    cacheRepo = tmpCache, omitArgs = ".specialData")
+  testthat::expect_true(!is.null(attributes(modCache)$argsToPreserve))
+  testthat::expect_identical(names(attributes(modCache2)$argsToPreserve), c("uniqueEcoregionGroups", "secondArg"))
+  testthat::expect_identical(attributes(modCache2)$argsToPreserve[["uniqueEcoregionGroups"]], C)
+  testthat::expect_identical(attributes(modCache2)$argsToPreserve[["secondArg"]], c("A1", "A2", "A3"))
+
+  D <- c("G1", "G1", "G2", "G2")
+
+  testthat::expect_message(modCacheSub2 <- Cache(FUN = LandR::statsModel, formula = "A ~ B + (1|C)", .specialData = b,
+                                                uniqueEcoregionGroups = D, secondArg = c("A1", "A3"),
+                                                expectSubset = "uniqueEcoregionGroups", cacheRepo = tmpCache,
+                                                omitArgs = c(".specialData", "expectSubset")),
+                           regexp = "All expected subsets are found in the cached object")
+
+  testthat::expect_true(!is.null(attributes(modCacheSub2)$argsToPreserve))
+  # As secondArg is being ignored (as it doesn't exist in the function), Cache returns the first object
+  testthat::expect_identical(attr(modCache, "tags"), attr(modCacheSub2, "tags"))
+
+  # Case with two arguments, but both belong to the function
+
+  funny <- function(I, am, awesome){
+    aintI <- I*100
+    return(aintI)
+  }
+
+  funnyCache2args <- Cache(FUN = funny, I = 1, am = c("great", "positive"),
+                           awesome = c("absolutely", 10),
+                     argsToPreserve = c("am", "awesome"),
+                     cacheRepo = tmpCache, omitArgs = "I")
+  testthat::expect_true(!is.null(attributes(funnyCache2args)$argsToPreserve))
+  testthat::expect_identical(names(attributes(funnyCache2args)$argsToPreserve), c("am", "awesome"))
+  testthat::expect_identical(attributes(funnyCache2args)$argsToPreserve[["am"]], c("great", "positive"))
+  testthat::expect_identical(attributes(funnyCache2args)$argsToPreserve[["awesome"]], c("absolutely", 10)) # works with numeric or
+  testthat::expect_identical(attributes(funnyCache2args)$argsToPreserve[["awesome"]], c("absolutely", "10")) # character
+
+  # If all arguments are different we have a new cached call
+  testthat::expect_message(funnyCacheSub2args <- Cache(FUN = funny, I = 3, am = c("amazing", "cute"),
+                                                       awesome = c("surely", 3),
+                                                       expectSubset = c("am", "awesome"),
+                                                       cacheRepo = tmpCache, omitArgs = "I"),
+                           regexp = "The arguments passed are not a subset of the most similar cached object")
+# TEST: test that the cache differs from funnyCache2
+
+  # If only one of two arguments is the same we have a new cached call ### [ FIX ] Should show which arguments differ!
+  testthat::expect_message(funnyCacheSub2args2 <- Cache(FUN = funny, I = 3, am = c("great", "positive"),
+                                                       awesome = c("surely", 3),
+                                                       expectSubset = c("am", "awesome"),
+                                                       cacheRepo = tmpCache, omitArgs = "I"),
+                           regexp = "The arguments passed are not a subset of the most similar cached object")
+  # TEST: test that the cache differs from funnyCache2
+
+  # Make a test for when it could get a similar cache without attributes
+
+  testthat::expect_true(!is.null(attributes(modCacheSub2)$argsToPreserve))
 
   on.exit(options(opt), add = TRUE)
 # })
 
-
-# here cache will check if the supplied function/arguments are a subset of
-# a cached object
-browser()
-# Here I need to:
-# 0. Only if cacheId is NOT supplied
-# 1. test if the arguments that differ can be compared
-# 2. Compare them setdiff(subset, fromOriginalObject$full)
-# 3. if length(setdiff)==0, they are inside, get the cacheId
-# 4. pass the cacheId to the call with a message\
